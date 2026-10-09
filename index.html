@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Decipher: proof of concept</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#EEF1F4;--surface:#fff;--ink:#16202E;--muted:#5B6778;--line:#D5DBE3;
+  --mark:#FFE27A;--markink:#16202E;--accent:#0B7A75;--accent-soft:#DDF1EF;--warn:#8A5A00;
+  --wa-head:#008069;--wa-bg:#EFEAE2;--wa-in:#FFFFFF;--wa-out:#D9FDD3;--wa-ink:#111B21;--wa-sub:#667781;--wa-day:#FFFFFFCC;
+  box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#101720;--surface:#182230;--ink:#E8EDF3;--muted:#95A2B3;--line:#2B394B;
+  --mark:#FFE27A;--markink:#16202E;--accent:#4CC2BB;--accent-soft:#12312F;--warn:#E9B44C;
+  --wa-head:#202C33;--wa-bg:#0B141A;--wa-in:#202C33;--wa-out:#005C4B;--wa-ink:#E9EDEF;--wa-sub:#8696A0;--wa-day:#182229CC;}}
+:root[data-theme="dark"]{
+  --bg:#101720;--surface:#182230;--ink:#E8EDF3;--muted:#95A2B3;--line:#2B394B;
+  --mark:#FFE27A;--markink:#16202E;--accent:#4CC2BB;--accent-soft:#12312F;--warn:#E9B44C;
+  --wa-head:#202C33;--wa-bg:#0B141A;--wa-in:#202C33;--wa-out:#005C4B;--wa-ink:#E9EDEF;--wa-sub:#8696A0;--wa-day:#182229CC;}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Atkinson Hyperlegible",system-ui,sans-serif;line-height:1.5;font-size:16px}
+.wrap{max-width:1080px;margin:0 auto;padding:28px 18px 56px}
+h1{font-family:"Bricolage Grotesque",system-ui,sans-serif;font-size:clamp(30px,5vw,46px);line-height:1.05;margin:0 0 10px;letter-spacing:-.02em}
+.lede{max-width:62ch;color:var(--muted);margin:0 0 6px}
+.badge{display:inline-block;margin:10px 0 22px;padding:4px 10px;border:1px solid var(--line);border-radius:999px;font-size:13px;color:var(--warn)}
+h2{font-family:"Bricolage Grotesque",system-ui,sans-serif;font-size:19px;margin:0 0 10px}
+.picker{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));margin-bottom:22px}
+.pick{all:unset;cursor:pointer;background:var(--surface);border:1.5px solid var(--line);border-radius:10px;padding:12px 14px;display:block}
+.pick:hover{border-color:var(--accent)}
+.pick:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.pick[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft)}
+.pick small{display:block;color:var(--muted);margin-bottom:4px}
+.pick b{display:block}
+.grid{display:grid;gap:18px;grid-template-columns:1fr 1.1fr;align-items:start}
+@media (max-width:820px){.grid{grid-template-columns:1fr}}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px}
+/* WhatsApp-style phone */
+.phone{border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--wa-bg);display:flex;flex-direction:column}
+.wa-head{background:var(--wa-head);color:#fff;display:flex;align-items:center;gap:10px;padding:10px 12px}
+.avatar{width:36px;height:36px;border-radius:50%;background:#C8A2C8;color:#3A1F3A;display:grid;place-items:center;font-weight:700}
+.wa-head .nm{font-weight:700;line-height:1.1}
+.wa-head .st{font-size:12px;opacity:.85}
+.chat{position:relative;display:flex;flex-direction:column;gap:3px;max-height:540px;overflow:auto;padding:12px 10px 16px}
+.day{align-self:center;background:var(--wa-day);color:var(--wa-sub);font-size:12px;padding:3px 10px;border-radius:8px;margin:10px 0 6px;box-shadow:0 1px 1px #0002}
+.msg{max-width:84%;padding:6px 9px 4px;border-radius:9px;background:var(--wa-in);color:var(--wa-ink);box-shadow:0 1px 1px #0002;align-self:flex-start;transition:box-shadow .3s}
+.msg.me{align-self:flex-end;background:var(--wa-out)}
+.msg .tx{white-space:pre-wrap}
+.tm{display:block;text-align:right;font-size:11px;color:var(--wa-sub);margin-top:1px}
+.tick{color:#53BDEB;margin-left:3px}
+.msg.hit{box-shadow:0 0 0 3px var(--mark),0 1px 1px #0002}
+.why{display:none;margin:4px -3px 2px;padding:3px 8px;border-radius:6px;background:var(--mark);color:var(--markink);font-size:13px;font-weight:700}
+.msg.hit .why{display:block}
+.msg.now{box-shadow:0 0 0 2px var(--accent),0 1px 1px #0002}
+.newtag{display:block;font-size:12px;font-weight:700;color:var(--accent);margin-bottom:2px}
+.card{display:flex;gap:10px;margin:2px 0 6px;padding:8px;border-radius:7px;background:#0000000F}
+.thumb{flex:none;width:56px;height:56px;border-radius:8px;display:grid;place-items:center;font-size:28px;background:linear-gradient(135deg,#F58529,#DD2A7B 55%,#8134AF)}
+.card b{display:block;font-size:14px;line-height:1.25}
+.card span{font-size:12px;color:var(--wa-sub)}
+/* analysis */
+.steps{list-style:none;margin:0 0 14px;padding:0;display:grid;gap:8px}
+.steps li{display:flex;gap:10px;align-items:flex-start;color:var(--muted);opacity:.45;transition:opacity .3s}
+.steps li.on{opacity:1;color:var(--ink)}
+.dot{flex:none;width:18px;height:18px;margin-top:2px;border-radius:50%;border:2px solid var(--line)}
+.steps li.on .dot{border-color:var(--accent);background:var(--accent)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.chip{background:var(--accent-soft);color:var(--ink);border-radius:6px;padding:2px 8px;font-size:13.5px}
+.result{display:none;border-top:1px solid var(--line);padding-top:14px}
+.result.show{display:block}
+.hyp{border:1px solid var(--line);border-radius:10px;padding:12px;margin-bottom:10px}
+.hyp.top{border-color:var(--accent);background:var(--accent-soft)}
+.hyp h3{margin:0 0 4px;font-size:16px}
+.meter{height:6px;border-radius:4px;background:var(--line);overflow:hidden;margin:6px 0}
+.meter i{display:block;height:100%;background:var(--accent);width:0;transition:width .8s}
+.ev{margin:6px 0 0;font-size:14px;color:var(--muted)}
+.ask{margin-top:6px;padding:12px;border-radius:10px;background:var(--bg);font-size:15px}
+.empty{color:var(--muted)}
+.foot{margin-top:26px;color:var(--muted);font-size:14px;max-width:70ch}
+button.replay{all:unset;cursor:pointer;color:var(--accent);font-weight:700;margin-left:8px;font-size:15px}
+button.replay:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Decipher what they actually meant</h1>
+  <p class="lede">Paste a confusing message. The tool checks the person's life context and recent chats, finds the older messages it connects to, and offers ranked interpretations with the evidence.</p>
+  <span class="badge">Demo with fictional sample chats and scripted results. No live AI is running.</span>
+
+  <h2>Pick something confusing Radhika said</h2>
+  <div class="picker" id="picker"></div>
+
+  <div class="grid">
+    <section class="phone" aria-label="Chat history with Radhika">
+      <div class="wa-head"><div class="avatar">R</div><div><div class="nm">Radhika</div><div class="st">online</div></div></div>
+      <div class="chat" id="chat"></div>
+    </section>
+    <section class="panel" id="analysis" aria-label="Analysis" aria-live="polite">
+      <h2>How it works it out <button class="replay" id="replay" hidden>Replay</button></h2>
+      <p class="empty" id="empty">Choose a message above to see the analysis.</p>
+      <ol class="steps" id="steps" hidden></ol>
+      <div class="result" id="result"></div>
+    </section>
+  </div>
+
+  <p class="foot">In a real version, step 1 reads a profile kept up to date from past chats, step 3 uses search over the full transcript, and an AI model writes the interpretations and quotes its evidence. It would also show uncertainty and suggest a question to ask, rather than claim to know.</p>
+</div>
+
+<script>
+const chat=[
+ {id:"m0",day:"Fri, Oct 2",who:"Radhika",tm:"8:14 pm",t:"this is literally me every monday",card:{title:"Cat falls off the counter in slow motion",sub:"Instagram reel. Caption: A A P A R"}},
+ {id:"m0b",day:"Fri, Oct 2",who:"Me",me:1,tm:"8:16 pm",t:"lmao the way it just gives up"},
+ {id:"m0c",day:"Fri, Oct 2",who:"Radhika",tm:"8:17 pm",t:"the caption is the sound it makes. 'A A P A R'. i'm using it from now on when everything is too much"},
+ {id:"m3",day:"Sat, Oct 3",who:"Radhika",tm:"6:02 pm",t:"i burned Priya's soup pot making chili. she is going to kill me"},
+ {id:"m1",day:"Sun, Oct 4",who:"Radhika",tm:"10:31 am",t:"ok i named the space heater Turtle. takes forever to warm up and it's covered in a shell of dust"},
+ {id:"m2",day:"Sun, Oct 4",who:"Me",me:1,tm:"10:33 am",t:"lol perfect name"},
+ {id:"m4",day:"Mon, Oct 5",who:"Radhika",tm:"9:12 am",t:"landlord says the heater guy comes thursday between 8 and 5. useless window"},
+ {id:"m5",day:"Mon, Oct 5",who:"Me",me:1,tm:"9:20 am",t:"can you work from home thursday?"},
+ {id:"m6",day:"Tue, Oct 6",who:"Radhika",tm:"6:40 pm",t:"Dana's flight got moved to the 12th so i guess i'm cleaning out the blue room"},
+ {id:"m7",day:"Tue, Oct 6",who:"Me",me:1,tm:"6:45 pm",t:"your sister's staying for a while?"},
+ {id:"m8",day:"Tue, Oct 6",who:"Radhika",tm:"6:46 pm",t:"just marathon weekend. we haven't really talked since spring"},
+ {id:"m9",day:"Wed, Oct 7",who:"Radhika",tm:"1:05 pm",t:"ordered Priya a new pot. told her at lunch and she hugged me"}
+];
+const ids=Object.fromEntries(chat.map(m=>[m.id,m]));
+const scen=[
+ {tag:"Thu, Oct 8, 6:10 pm",s:"A A P A R",
+  profile:["'A A P A R' = her catchphrase from a reel (Oct 2)","Heater repair day is today","Nervous about Dana's visit on the 12th"],
+  recent:["m6","m8"],older:{m0:"The reel she shared",m0c:"She defines the phrase here",m4:"Repair window is today"},
+  hyps:[
+   {n:"A joking way of saying 'everything is too much right now', like the cat in the reel giving up.",c:82,e:["m0","m0c"],why:"She shared that reel on Oct 2 and said she'd use the phrase for exactly this."},
+   {n:"Frustration about the heater repair visit eating up her whole day.",c:11,e:["m4"],why:"Possible context for the bad day, but it doesn't explain the phrase itself."},
+   {n:"A typo, keyboard mash, or something unrelated to the reel.",c:7,e:[],why:"The spacing and capitals match the caption exactly, so this is unlikely."}],
+  ask:"Rough day? Is it the heater guy, the Dana stuff, or both?"},
+ {tag:"Thu, Oct 8, 7:55 am",s:"Can't do dinner tonight, I have to babysit Turtle.",
+  profile:["Turtle = space heater (named Oct 4)","Lives in a rented apartment","Landlord arranges repairs"],
+  recent:["m4","m5"],older:{m1:"Defines 'Turtle' as the heater",m4:"Repair visit is today, 8 to 5"},
+  hyps:[
+   {n:"Waiting at home all day for the repair visit on the heater, so dinner is off.",c:88,e:["m1","m4"],why:"Turtle is the heater nickname, and the repair window covers today."},
+   {n:"Looking after an actual pet turtle.",c:7,e:[],why:"No pets are mentioned anywhere in the history."},
+   {n:"A different nickname for a person or project.",c:5,e:[],why:"Nothing else has been called Turtle."}],
+  ask:"Is the heater guy still not here yet? Want me to bring dinner over?"},
+ {tag:"Thu, Oct 8, 9:30 am",s:"I'm more nervous about the 12th than the race.",
+  profile:["Sister: Dana","Marathon weekend coming up","Distant from Dana since spring"],
+  recent:["m6"],older:{m6:"Dana arrives on the 12th",m8:"Not close to Dana since spring"},
+  hyps:[
+   {n:"Anxious about seeing Dana after months of distance, more than about the marathon itself.",c:84,e:["m6","m8"],why:"Her flight lands on the 12th and they haven't talked since spring."},
+   {n:"Worried about hosting and getting the blue room ready on time.",c:11,e:["m6"],why:"Possible, but 'nervous' fits the relationship better."},
+   {n:"Nervous about a work deadline on that date.",c:5,e:[],why:"No work event on that date appears in the chats."}],
+  ask:"Is it seeing Dana that's weighing on you? Do you want to talk through what to say?"},
+ {tag:"Thu, Oct 8, 12:40 pm",s:"The soup situation is handled. She wasn't even mad.",
+  profile:["Priya = coworker","Borrowed Priya's pot","Lunch together on Wednesday"],
+  recent:["m9"],older:{m3:"Burned Priya's soup pot",m9:"Replacement ordered, Priya hugged her"},
+  hyps:[
+   {n:"The burned-pot incident with Priya is settled. She accepted the replacement and wasn't upset.",c:91,e:["m3","m9"],why:"It matches the pot, the replacement, and Priya's reaction."},
+   {n:"Something with actual soup, like a food order gone wrong.",c:6,e:[],why:"Nothing about soup orders shows up in the history."},
+   {n:"A coded way of talking about a conflict with someone else.",c:3,e:[],why:"No evidence in the chats."}],
+  ask:"Great, so Priya was fine about the pot?"}
+];
+const $=id=>document.getElementById(id);
+const rm=matchMedia("(prefers-reduced-motion:reduce)").matches;
+let timers=[],cur=null;
+
+function bubble(m){
+  const d=document.createElement("div");d.className="msg"+(m.me?" me":"");d.id=m.id;
+  d.innerHTML='<span class="why"></span><div class="cardslot"></div><span class="tx"></span><span class="tm"><span class="t"></span><span class="tick"></span></span>';
+  if(m.card){
+    const c=document.createElement("div");c.className="card";
+    c.innerHTML='<div class="thumb">\u{1F408}</div><div><b></b><span></span></div>';
+    c.querySelector("b").textContent=m.card.title;c.querySelector("span").textContent=m.card.sub;
+    d.querySelector(".cardslot").appendChild(c);
+  }
+  d.querySelector(".tx").textContent=m.t;
+  d.querySelector(".t").textContent=m.tm;
+  d.querySelector(".tick").textContent=m.me?"\u2713\u2713":"";
+  return d;
+}
+function renderChat(){
+  const el=$("chat");let day="";el.innerHTML="";
+  chat.forEach(m=>{
+    if(m.day!==day){day=m.day;const d=document.createElement("div");d.className="day";d.textContent=day;el.appendChild(d)}
+    el.appendChild(bubble(m));
+  });
+  const n=bubble({id:"nowmsg",who:"Radhika",tm:"",t:""});n.classList.add("now");n.hidden=true;
+  const tag=document.createElement("span");tag.className="newtag";tag.textContent="New message";n.insertBefore(tag,n.firstChild);
+  el.appendChild(n);
+}
+function renderPicker(){
+  const p=$("picker");p.innerHTML="";
+  scen.forEach((s,i)=>{
+    const b=document.createElement("button");b.type="button";b.className="pick";b.setAttribute("aria-pressed","false");
+    b.innerHTML='<small></small><b></b>';
+    b.querySelector("small").textContent=s.tag;b.querySelector("b").textContent=s.s;
+    b.addEventListener("click",()=>run(i));p.appendChild(b);
+  });
+}
+function clearHits(){
+  document.querySelectorAll(".msg").forEach(m=>{
+    m.classList.remove("hit");
+    const w=m.querySelector(".why");if(w)w.textContent="";
+  });
+}
+function later(fn,ms){if(rm){fn();return}timers.push(setTimeout(fn,ms))}
+function scrollChat(el){
+  const c=$("chat");
+  c.scrollTo({top:Math.max(0,el.offsetTop-60),behavior:rm?"auto":"smooth"});
+}
+function mark(id,why){
+  const m=$(id);if(!m)return;
+  m.classList.add("hit");const w=m.querySelector(".why");if(w)w.textContent=why;
+  scrollChat(m);
+}
+
+function run(i){
+  timers.forEach(clearTimeout);timers=[];cur=i;const s=scen[i];
+  document.querySelectorAll(".pick").forEach((b,j)=>b.setAttribute("aria-pressed",String(j===i)));
+  clearHits();$("empty").hidden=true;$("replay").hidden=false;
+  const now=$("nowmsg");now.hidden=false;
+  now.querySelector(".tx").textContent=s.s;
+  now.querySelector(".t").textContent=s.tag.split(", ").slice(-1)[0];
+  scrollChat(now);
+  const st=$("steps");st.hidden=false;
+  st.innerHTML=
+   '<li><span class="dot"></span><div>Load what it knows about Radhika<div class="chips"></div></div></li>'+
+   '<li><span class="dot"></span><div>Read the last few days of chat</div></li>'+
+   '<li><span class="dot"></span><div>Search older messages for connections</div></li>'+
+   '<li><span class="dot"></span><div>Compare explanations and check the evidence</div></li>';
+  const chips=st.querySelector(".chips");
+  s.profile.forEach(p=>{const c=document.createElement("span");c.className="chip";c.textContent=p;chips.appendChild(c)});
+  const lis=st.querySelectorAll("li");const res=$("result");res.classList.remove("show");res.innerHTML="";
+  if(matchMedia("(max-width:820px)").matches){$("analysis").scrollIntoView({behavior:rm?"auto":"smooth",block:"start"})}
+  later(()=>lis[0].classList.add("on"),200);
+  later(()=>{lis[1].classList.add("on");s.recent.forEach(id=>mark(id,"Recent context"))},1100);
+  later(()=>{lis[2].classList.add("on");Object.entries(s.older).forEach(([id,w])=>mark(id,w))},2100);
+  later(()=>{lis[3].classList.add("on");showResult(s)},3200);
+}
+function showResult(s){
+  const r=$("result");r.innerHTML="<h2>Most likely meanings</h2>";
+  s.hyps.forEach((h,k)=>{
+    const d=document.createElement("div");d.className="hyp"+(k===0?" top":"");
+    d.innerHTML='<h3></h3><div>Confidence: <b></b>%</div><div class="meter"><i></i></div><p class="ev"></p>';
+    d.querySelector("h3").textContent=h.n;d.querySelector("b").textContent=h.c;
+    const ev=h.e.length?h.e.map(id=>ids[id].day+': "'+ids[id].t+'"').join("  |  "):"";
+    d.querySelector(".ev").textContent=h.why+(ev?"  Evidence: "+ev:"");
+    r.appendChild(d);
+    setTimeout(()=>{d.querySelector("i").style.width=h.c+"%"},50);
+  });
+  const a=document.createElement("div");a.className="ask";
+  const b=document.createElement("b");b.textContent="Suggested follow-up to Radhika: ";
+  a.appendChild(b);a.appendChild(document.createTextNode(s.ask));r.appendChild(a);
+  r.classList.add("show");
+}
+$("replay").addEventListener("click",()=>{if(cur!==null)run(cur)});
+renderChat();renderPicker();
+</script>
+</body>
+</html>
